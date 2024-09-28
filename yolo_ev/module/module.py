@@ -1,0 +1,80 @@
+import torch
+import torch.nn as nn
+import pytorch_lightning as pl
+from omegaconf import DictConfig
+
+from .model.yolox.yolox import YOLOX
+from yolo_ev.utils.lr_scheduler import LRScheduler
+
+class Module(pl.LightningModule):
+
+    def __init__(self, full_config: DictConfig):
+        super().__init__()
+
+        self.full_config = full_config
+
+        self.model = YOLOX(self.full_config.model)
+
+    def forward(self, x, targets=None):
+        return self.model(x, targets)
+
+    def training_step(self, batch, batch_idx):
+        self.model.train()
+        imgs, targets, _, _ = batch
+        imgs = imgs.to(torch.float32)
+        targets = targets.to(torch.float32)
+        
+        outputs = self(imgs, targets)
+        loss = outputs["total_loss"]
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        imgs, targets, _, _ = batch
+        imgs = imgs.to(torch.float32)
+        targets = targets.to(torch.float32)
+        
+        outputs = self(imgs, targets)
+        val_loss = outputs["total_loss"]
+        self.log('val_loss', val_loss, prog_bar=True, logger=True)
+
+    def configure_optimizers(self):
+        # Learning rate を設定
+        
+        lr = self.full_config.scheduler.warmup_lr
+        
+
+        # パラメータグループを作成
+        pg0, pg1, pg2 = [], [], []
+
+        for k, v in self.model.named_modules():
+            if hasattr(v, "bias") and isinstance(v.bias, nn.Parameter):
+                pg2.append(v.bias)  # biases
+            if isinstance(v, nn.BatchNorm2d) or "bn" in k:
+                pg0.append(v.weight)  # no decay
+            elif hasattr(v, "weight") and isinstance(v.weight, nn.Parameter):
+                pg1.append(v.weight)  # apply decay
+
+        # オプティマイザーを設定
+        optimizer = torch.optim.SGD(
+            pg0, 
+            lr=lr, 
+            momentum=self.full_config.optimizer.momentum, 
+            nesterov=True
+        )
+        optimizer.add_param_group({"params": pg1, "weight_decay": self.full_config.optimizer.weight_decay})
+        optimizer.add_param_group({"params": pg2})
+
+        # スケジューラーを設定
+        scheduler = LRScheduler(
+            self.full_config.name,  # scheduler type (can be made configurable)
+            lr,
+            len(self.train_dataloader()),
+            self.full_config.scheduler.max_epoch,
+            warmup_epochs=self.full_config.scheduler.warmup_epochs,
+            warmup_lr_start=self.full_config.scheduler.warmup_lr,
+            no_aug_epochs=self.full_config.scheduler.no_aug_epochs,
+            min_lr_ratio=self.full_config.scheduler.min_lr_ratio,
+        )
+
+        return [optimizer], [scheduler]

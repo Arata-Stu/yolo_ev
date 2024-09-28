@@ -1,0 +1,28 @@
+model:
+  backbone:
+    depth: 1.0
+    width: 1.0
+    in_features: ["dark3", "dark4", "dark5"]
+    in_channels: [256, 512, 1024]
+    depthwise: false
+    act: "silu"
+    
+  head:
+    num_classes: 80
+    width: 1.0
+    strides: [8, 16, 32]
+    in_channels: [256, 512, 1024]
+    act: "silu"
+    depthwise: false
+
+optimizer:
+  momentum: 0.9
+  weight_decay: 0.0005
+
+scheduler:
+  name: "yoloxwarmcos"
+  max_epoch: 300
+  warmup_epochs: 5
+  warmup_lr: 0.0
+  min_lr_ratio: 0.1
+  no_aug_epochs: 15
