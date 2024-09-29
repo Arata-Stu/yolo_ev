@@ -6,92 +6,47 @@ import math
 from functools import partial
 
 
-class LRScheduler:
-    def __init__(self, name, lr, iters_per_epoch, total_epochs, **kwargs):
-        """
-        Supported lr schedulers: [cos, warmcos, multistep]
+import torch
+from torch.optim.lr_scheduler import _LRScheduler
 
-        Args:
-            lr (float): learning rate.
-            iters_per_epoch (int): number of iterations in one epoch.
-            total_epochs (int): number of epochs in training.
-            kwargs (dict):
-                - cos: None
-                - warmcos: [warmup_epochs, warmup_lr_start (default 1e-6)]
-                - multistep: [milestones (epochs), gamma (default 0.1)]
-        """
-
+class LRScheduler(_LRScheduler):
+    def __init__(self, optimizer, name, lr, iters_per_epoch, total_epochs, **kwargs):
+        self.name = name
         self.lr = lr
         self.iters_per_epoch = iters_per_epoch
         self.total_epochs = total_epochs
         self.total_iters = iters_per_epoch * total_epochs
-
         self.__dict__.update(kwargs)
-
         self.lr_func = self._get_lr_func(name)
+        super().__init__(optimizer)
 
-    def update_lr(self, iters):
-        return self.lr_func(iters)
+    def get_lr(self):
+        iters = self.last_epoch  # self.last_epoch は現在のステップ数
+        return [self.lr_func(iters)]
 
     def _get_lr_func(self, name):
-        if name == "cos":  # cosine lr schedule
-            lr_func = partial(cos_lr, self.lr, self.total_iters)
+        if name == "cos":
+            return partial(cos_lr, self.lr, self.total_iters)
         elif name == "warmcos":
             warmup_total_iters = self.iters_per_epoch * self.warmup_epochs
             warmup_lr_start = getattr(self, "warmup_lr_start", 1e-6)
-            lr_func = partial(
-                warm_cos_lr,
-                self.lr,
-                self.total_iters,
-                warmup_total_iters,
-                warmup_lr_start,
-            )
+            return partial(warm_cos_lr, self.lr, self.total_iters, warmup_total_iters, warmup_lr_start)
         elif name == "yoloxwarmcos":
             warmup_total_iters = self.iters_per_epoch * self.warmup_epochs
             no_aug_iters = self.iters_per_epoch * self.no_aug_epochs
             warmup_lr_start = getattr(self, "warmup_lr_start", 0)
             min_lr_ratio = getattr(self, "min_lr_ratio", 0.2)
-            lr_func = partial(
-                yolox_warm_cos_lr,
-                self.lr,
-                min_lr_ratio,
-                self.total_iters,
-                warmup_total_iters,
-                warmup_lr_start,
-                no_aug_iters,
+            return partial(
+                yolox_warm_cos_lr, self.lr, min_lr_ratio, self.total_iters, 
+                warmup_total_iters, warmup_lr_start, no_aug_iters
             )
-        elif name == "yoloxsemiwarmcos":
-            warmup_lr_start = getattr(self, "warmup_lr_start", 0)
-            min_lr_ratio = getattr(self, "min_lr_ratio", 0.2)
-            warmup_total_iters = self.iters_per_epoch * self.warmup_epochs
-            no_aug_iters = self.iters_per_epoch * self.no_aug_epochs
-            normal_iters = self.iters_per_epoch * self.semi_epoch
-            semi_iters = self.iters_per_epoch_semi * (
-                self.total_epochs - self.semi_epoch - self.no_aug_epochs
-            )
-            lr_func = partial(
-                yolox_semi_warm_cos_lr,
-                self.lr,
-                min_lr_ratio,
-                warmup_lr_start,
-                self.total_iters,
-                normal_iters,
-                no_aug_iters,
-                warmup_total_iters,
-                semi_iters,
-                self.iters_per_epoch,
-                self.iters_per_epoch_semi,
-            )
-        elif name == "multistep":  # stepwise lr schedule
-            milestones = [
-                int(self.total_iters * milestone / self.total_epochs)
-                for milestone in self.milestones
-            ]
+        elif name == "multistep":
+            milestones = [int(self.total_iters * milestone / self.total_epochs) for milestone in self.milestones]
             gamma = getattr(self, "gamma", 0.1)
-            lr_func = partial(multistep_lr, self.lr, milestones, gamma)
+            return partial(multistep_lr, self.lr, milestones, gamma)
         else:
             raise ValueError("Scheduler version {} not supported.".format(name))
-        return lr_func
+
 
 
 def cos_lr(lr, total_iters, iters):

@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from yolo_ev.module.model.yolox.utils.boxes import bboxes_iou
+from yolo_ev.module.model.yolox.utils.compat import meshgrid
 
 from ...loss.loss import IOUloss
 from ...block.conv import BaseConv, DWConv

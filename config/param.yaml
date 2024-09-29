@@ -20,8 +20,8 @@ dataset:
 
 model:
   backbone:
-    depth: 1.0
-    width: 1.0
+    depth: 0.33
+    width: 0.50
     in_features: ["dark3", "dark4", "dark5"]
     in_channels: [256, 512, 1024]
     depthwise: false
@@ -29,7 +29,7 @@ model:
     
   head:
     num_classes: 80
-    width: 1.0
+    width: 0.50
     strides: [8, 16, 32]
     in_channels: [256, 512, 1024]
     act: "silu"
