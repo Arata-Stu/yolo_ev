@@ -51,6 +51,8 @@ class ModelModule(pl.LightningModule):
         # Learning rate を設定
         lr = self.full_config.scheduler.warmup_lr
 
+        # データセットの長さとバッチサイズに基づいて max_iter を計算
+        
         # パラメータグループを作成
         pg0, pg1, pg2 = [], [], []
 
@@ -64,9 +66,9 @@ class ModelModule(pl.LightningModule):
 
         # オプティマイザーを設定
         optimizer = torch.optim.SGD(
-            pg0, 
-            lr=lr, 
-            momentum=self.full_config.optimizer.momentum, 
+            pg0,
+            lr=lr,
+            momentum=self.full_config.optimizer.momentum,
             nesterov=True
         )
         optimizer.add_param_group({"params": pg1, "weight_decay": self.full_config.optimizer.weight_decay})
@@ -74,10 +76,10 @@ class ModelModule(pl.LightningModule):
 
         # スケジューラーを設定
         scheduler = LRScheduler(
-            self.full_config.scheduler.name,  # scheduler type (can be made configurable)
+            self.full_config.scheduler.name,  # スケジューラータイプ
             lr,
-            len(self.train_dataloader()),
-            self.full_config.scheduler.max_epoch,
+            self.full_config.training.max_step,  # 計算された max_iter
+            self.full_config.training.max_epoch,
             warmup_epochs=self.full_config.scheduler.warmup_epochs,
             warmup_lr_start=self.full_config.scheduler.warmup_lr,
             no_aug_epochs=self.full_config.scheduler.no_aug_epochs,
@@ -85,3 +87,4 @@ class ModelModule(pl.LightningModule):
         )
 
         return [optimizer], [scheduler]
+

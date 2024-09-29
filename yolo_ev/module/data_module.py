@@ -23,40 +23,35 @@ class DataModule(pl.LightningDataModule):
             print(f"Validation dataset size: {len(self.valid_dataset)}")
 
     def train_dataloader(self):
-        if len(self.train_dataset) != 0:
-            return DataLoader(
-                self.train_dataset,
-                batch_size=self.full_config.dataset.train.batch_size,
-                shuffle=True,
-                num_workers=self.full_config.dataset.train.num_workers,
-                pin_memory=True,
-                drop_last=True,
-            )
-        else:
-            raise ValueError('Train dataset is empty. Please check the dataset path or configuration.')
-
+        
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.full_config.dataset.train.batch_size,
+            shuffle=True,
+            num_workers=self.full_config.dataset.train.num_workers,
+            pin_memory=True,
+            drop_last=True,
+        )
+        
     def val_dataloader(self):
-        if len(self.valid_dataset) != 0:
-            return DataLoader(
-                self.valid_dataset,
-                batch_size=self.full_config.dataset.val.batch_size,
-                shuffle=False,
-                num_workers=self.full_config.dataset.val.num_workers,
-                pin_memory=True,
-                drop_last=False,
-            )
-        else:
-            raise ValueError('Validation dataset is empty. Please check the dataset path or configuration.')
-
+        
+        return DataLoader(
+            self.valid_dataset,
+            batch_size=self.full_config.dataset.val.batch_size,
+            shuffle=False,
+            num_workers=self.full_config.dataset.val.num_workers,
+            pin_memory=True,
+            drop_last=False,
+        )
+        
     def test_dataloader(self):
-        if len(self.test_dataset) != 0:
-            return DataLoader(
-                self.test_dataset,
-                batch_size=self.full_config.dataset.test.batch_size,
-                shuffle=False,
-                num_workers=self.full_config.dataset.test.num_workers,
-                pin_memory=True,
-                drop_last=False,
-            )
-        else:
-            raise ValueError('Test dataset is empty. Please check the dataset path or configuration.')
+        
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.full_config.dataset.test.batch_size,
+            shuffle=False,
+            num_workers=self.full_config.dataset.test.num_workers,
+            pin_memory=True,
+            drop_last=False,
+        )
+        

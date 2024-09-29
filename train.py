@@ -27,7 +27,8 @@ def main():
         ),  
     ]
     trainer = pl.Trainer(
-        max_epochs=10,
+        max_epochs=config.training.max_epoch,
+        max_steps= config.training.max_step,
         logger=[pl_loggers.TensorBoardLogger(save_dir=save_dir)],
         callbacks=callbacks,
         accelerator='gpu',
@@ -44,6 +45,7 @@ def main():
         benchmark=True,                         # cudnn.benchmarkを使用して高速化するか（determisticがTrueの場合はFalseに上書きされる）
     )
     # trainer.tune(model, datamodule=data_module)   # 「auto_lr_find=True」を指定した場合に実行する
+    
     trainer.fit(model, datamodule=data)
     # trainer.test(model, datamodule=data)
 
