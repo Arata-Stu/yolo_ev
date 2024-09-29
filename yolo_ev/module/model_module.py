@@ -28,10 +28,9 @@ class ModelModule(pl.LightningModule):
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
     
-    def training_epoch_end(self, outputs):
-        # outputsはバッチごとの出力リスト
-        avg_loss = torch.stack([x['loss'] for x in outputs]).mean()  # 平均損失を計算
-        self.log('epoch_train_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)  # TensorBoardにログを記録
+    def on_train_epoch_end(self):
+        avg_loss = self.trainer.callback_metrics['train_loss'].mean()
+        self.log('epoch_train_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)
 
     def validation_step(self, batch, batch_idx):
         self.model.eval()
@@ -44,11 +43,10 @@ class ModelModule(pl.LightningModule):
         self.log('val_loss', val_loss, prog_bar=True, logger=True)
         return val_loss
 
-    def validation_epoch_end(self, outputs):
-        # バリデーションエポックの損失も記録
-        avg_val_loss = torch.stack(outputs).mean()  # 平均損失を計算
+    def on_validation_epoch_end(self):
+        avg_val_loss = self.trainer.callback_metrics['val_loss'].mean()
         self.log('epoch_val_loss', avg_val_loss, on_epoch=True, prog_bar=True, logger=True)
-
+        
     def configure_optimizers(self):
         # Learning rate を設定
         lr = self.full_config.scheduler.warmup_lr
@@ -76,7 +74,7 @@ class ModelModule(pl.LightningModule):
 
         # スケジューラーを設定
         scheduler = LRScheduler(
-            self.full_config.name,  # scheduler type (can be made configurable)
+            self.full_config.scheduler.name,  # scheduler type (can be made configurable)
             lr,
             len(self.train_dataloader()),
             self.full_config.scheduler.max_epoch,

@@ -40,7 +40,7 @@ def main():
         # deterministic=True,                     # 再現性のために乱数シードを固定するか
         # resume_from_checkpoint='bbb/aaa.ckpt',  # チェックポイントから再開する場合に利用
         # precision=16,                           # 小数を何ビットで表現するか
-        amp_backend="apex",                     # 少数の混合方式を使用するかどうか。nvidiaのapexがインストールされている必要あり。
+        # amp_backend="apex",                     # 少数の混合方式を使用するかどうか。nvidiaのapexがインストールされている必要あり。
         benchmark=True,                         # cudnn.benchmarkを使用して高速化するか（determisticがTrueの場合はFalseに上書きされる）
     )
     # trainer.tune(model, datamodule=data_module)   # 「auto_lr_find=True」を指定した場合に実行する
