@@ -1,6 +1,10 @@
 torch
 torchvision
 pytorch-lightning
+
 omegaconf
 loguru
 pyyaml
+opencv-python
+
+pycocotools
