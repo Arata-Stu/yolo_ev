@@ -1,3 +1,24 @@
+dataset:
+  name: "coco"
+  data_dir: "Users/at/dataset/coco/"
+  img_size: [640, 640]
+  train:
+    json_file: "instances_train2017.json"
+    batch_size: 16
+    num_workers: 4
+
+  val:
+    json_file: "instances_val2017.json"
+    batch_size: 16
+    num_workers: 4
+
+  test:
+    # json_file: "instances_test2017.json"
+    batch_size: 16
+    num_workers: 4
+
+
+
 model:
   backbone:
     depth: 1.0
