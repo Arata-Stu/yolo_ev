@@ -6,18 +6,17 @@ from omegaconf import DictConfig
 from .model.yolox.yolox import YOLOX
 from yolo_ev.utils.lr_scheduler import LRScheduler
 
-class Module(pl.LightningModule):
+class ModelModule(pl.LightningModule):
 
     def __init__(self, full_config: DictConfig):
         super().__init__()
 
         self.full_config = full_config
-
         self.model = YOLOX(self.full_config.model)
 
     def forward(self, x, targets=None):
         return self.model(x, targets)
-
+    
     def training_step(self, batch, batch_idx):
         self.model.train()
         imgs, targets, _, _ = batch
@@ -29,7 +28,13 @@ class Module(pl.LightningModule):
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
     
+    def training_epoch_end(self, outputs):
+        # outputsはバッチごとの出力リスト
+        avg_loss = torch.stack([x['loss'] for x in outputs]).mean()  # 平均損失を計算
+        self.log('epoch_train_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)  # TensorBoardにログを記録
+
     def validation_step(self, batch, batch_idx):
+        self.model.eval()
         imgs, targets, _, _ = batch
         imgs = imgs.to(torch.float32)
         targets = targets.to(torch.float32)
@@ -37,12 +42,16 @@ class Module(pl.LightningModule):
         outputs = self(imgs, targets)
         val_loss = outputs["total_loss"]
         self.log('val_loss', val_loss, prog_bar=True, logger=True)
+        return val_loss
+
+    def validation_epoch_end(self, outputs):
+        # バリデーションエポックの損失も記録
+        avg_val_loss = torch.stack(outputs).mean()  # 平均損失を計算
+        self.log('epoch_val_loss', avg_val_loss, on_epoch=True, prog_bar=True, logger=True)
 
     def configure_optimizers(self):
         # Learning rate を設定
-        
         lr = self.full_config.scheduler.warmup_lr
-        
 
         # パラメータグループを作成
         pg0, pg1, pg2 = [], [], []
