@@ -14,6 +14,16 @@ class ModelModule(pl.LightningModule):
         self.full_config = full_config
         self.model = YOLOX(self.full_config.model)
 
+        def init_yolo(M):
+            for m in M.modules():
+                if isinstance(m, nn.BatchNorm2d):
+                    m.eps = 1e-3
+                    m.momentum = 0.03
+                    
+        self.model.apply(init_yolo)
+        self.model.head.initialize_biases(1e-2)
+        self.model.train()
+
     def forward(self, x, targets=None):
         return self.model(x, targets)
     
