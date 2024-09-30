@@ -69,7 +69,7 @@ class ModelModule(pl.LightningModule):
         # 必要なスコアをリターンして次のエポックで使う
         return scores
 
-    def validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self, outputs):
         # 複数バッチの結果を集計し、平均を取る
         avg_scores = {
             'AP': torch.tensor([x['AP'] for x in outputs]).mean(),
