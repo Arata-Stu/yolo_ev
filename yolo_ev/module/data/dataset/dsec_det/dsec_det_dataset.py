@@ -1,0 +1,93 @@
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+from pathlib import Path
+from .directory import DSECDirectory
+from .preprocessing import compute_img_idx_to_track_idx
+from .io import extract_from_h5_by_timewindow
+
+class DsecDetDataset(Dataset):
+
+    def __init__(self, data_dir, split_config, img_size=(256, 256), transform=None, sync="back"):
+        self.data_dir = Path(data_dir)
+        self.split_config = split_config
+        self.img_size=img_size
+        self.transform = transform
+        self.sync = sync
+
+        available_dirs = list(self.data_dir.glob("*/"))
+        self.subsequence_directories = [self.data_dir / s for s in split_config if self.data_dir / s in available_dirs]
+        
+        self.subsequence_directories = sorted(self.subsequence_directories, key=self.first_time_from_subsequence)
+
+        self.directories = dict()
+        self.img_idx_track_idxs = dict()
+        for f in self.subsequence_directories:
+            directory = DSECDirectory(f)
+            self.directories[f.name] = directory
+            self.img_idx_track_idxs[f.name] = compute_img_idx_to_track_idx(
+                directory.tracks.tracks['t'],
+                directory.images.timestamps
+            )
+
+
+    def __len__(self):
+        return sum(len(v) - 1 for v in self.img_idx_track_idxs.values())
+
+
+    def __getitem__(self, item):
+        output = {}
+        output['events'] = self.get_events(item)
+        output['tracks'] = self.get_tracks(item)
+
+        return output
+    
+    def first_time_from_subsequence(self, subsequence):
+        return np.genfromtxt(subsequence / "images/timestamps.txt", dtype="int64")[0]
+    
+    def get_tracks(self, index, mask=None, directory_name=None):
+        index, img_idx_to_track_idx, directory = self.rel_index(index, directory_name)
+        i_0, i_1 = self.get_index_window(index, len(img_idx_to_track_idx), sync=self.sync)
+        idx0, idx1 = img_idx_to_track_idx[i_1]
+        tracks = directory.tracks.tracks[idx0:idx1]
+
+        if mask is not None:
+            tracks = tracks[mask[idx0:idx1]]
+
+        return tracks
+
+    def get_events(self, index, directory_name=None):
+        index, img_idx_to_track_idx, directory = self.rel_index(index, directory_name)
+        i_0, i_1 = self.get_index_window(index, len(img_idx_to_track_idx), sync=self.sync)
+        t_0, t_1 = directory.images.timestamps[[i_0, i_1]]
+        events = extract_from_h5_by_timewindow(directory.events.event_file, t_0, t_1)
+        return events
+    
+    def get_index_window(self, index, num_idx, sync="back"):
+        if sync == "front":
+            assert 0 < index < num_idx
+            i_0 = index - 1
+            i_1 = index
+        else:
+            assert 0 <= index < num_idx - 1
+            i_0 = index
+            i_1 = index + 1
+
+        return i_0, i_1
+
+    
+    def rel_index(self, index, directory_name=None):
+        if directory_name is not None:
+            img_idx_to_track_idx = self.img_idx_track_idxs[directory_name]
+            directory = self.directories[directory_name]
+            return index, img_idx_to_track_idx, directory
+
+        for f in self.subsequence_directories:
+            img_idx_to_track_idx = self.img_idx_track_idxs[f.name]
+            if len(img_idx_to_track_idx) - 1 <= index:
+                index -= (len(img_idx_to_track_idx) - 1)
+                continue
+            else:
+                return index, img_idx_to_track_idx, self.directories[f.name]
+        else:
+            raise ValueError
