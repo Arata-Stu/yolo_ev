@@ -1,0 +1,47 @@
+import numpy as np
+import numba
+from yolo_ev.module.model.yolox.utils.boxes import xywh2cxcywh
+
+@numba.jit(nopython=True)
+def render_events_on_empty_image(height, width, x, y, p):
+    
+    image = np.ones((height, width, 3), dtype=np.uint8) * 114
+    
+    # イベントに基づいて画像を更新
+    for x_, y_, p_ in zip(x, y, p):
+        if p_ == 0:
+            image[y_, x_] = np.array([0, 0, 255])  # OFFイベントは青
+        else:
+            image[y_, x_] = np.array([255, 0, 0])  # ONイベントは赤
+    return image
+
+class TrainTransform:
+    def __init__(self, max_labels=50, flip_prob=0.5, hsv_prob=1.0, img_size=(640,640)):
+        self.max_labels = max_labels
+        self.flip_prob = flip_prob
+        self.hsv_prob = hsv_prob
+
+    def __call__(self, inputs):
+        events = inputs['events']
+        tracks = inputs['tracks']
+
+        # イベントフレームの作成 (例)
+        event_frame = render_events_on_empty_image(480, 640, events['x'], events['y'], events['p'])
+
+        # 複数のボックスに対応するために、各トラックデータから x, y, w, h を抽出
+        bboxes = np.stack((tracks['x'], tracks['y'], tracks['w'], tracks['h']), axis=-1)
+
+        # (x, y, w, h) -> (cx, cy, w, h) への変換
+        bboxes_cxcywh = xywh2cxcywh(bboxes.copy())
+
+        # ターゲットを作成
+        targets_t = np.hstack((tracks['class_id'].reshape(-1, 1), bboxes_cxcywh))
+
+        # padded_labels の作成
+        padded_labels = np.zeros((self.max_labels, 5))  # 5 = class_id + cx, cy, w, h
+        padded_labels[:min(len(targets_t), self.max_labels)] = targets_t[:self.max_labels]
+
+        # 必要に応じてデータ型を調整
+        padded_labels = np.ascontiguousarray(padded_labels, dtype=np.float32)
+
+        return event_frame, padded_labels

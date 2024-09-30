@@ -240,4 +240,4 @@ class ValTransform:
             img /= 255.0
             img -= np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
             img /= np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
-        return img, np.zeros((1, 5))
+        return img, res

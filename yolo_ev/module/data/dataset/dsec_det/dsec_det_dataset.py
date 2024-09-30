@@ -40,6 +40,9 @@ class DsecDetDataset(Dataset):
         output['events'] = self.get_events(item)
         output['tracks'] = self.get_tracks(item)
 
+        if self.transform is not None:
+            output = self.transform(output) 
+
         return output
     
     def first_time_from_subsequence(self, subsequence):

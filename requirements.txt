@@ -1,7 +1,7 @@
 torch
 torchvision
 pytorch-lightning
-
+numba
 omegaconf
 loguru
 pyyaml
