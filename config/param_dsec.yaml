@@ -1,0 +1,56 @@
+dataset:
+  name: "dsec"
+  data_dir: "/Users/at/dataset/DSEC/"
+  split_config: "/Users/at/Desktop/self_study/EventCamera/yolo_ev/yolo_ev/module/data/dataset/dsec_det/sample.yaml"
+  img_size: [640, 640]
+  train:
+    
+    batch_size: 16
+    num_workers: 4
+
+  val:
+    
+    batch_size: 16
+    num_workers: 4
+
+  test:
+    
+    batch_size: 16
+    num_workers: 4
+
+
+model:
+  backbone:
+    depth: 0.33
+    width: 0.5
+    in_features: ["dark3", "dark4", "dark5"]
+    in_channels: [256, 512, 1024]
+    depthwise: false
+    act: "silu"
+    
+  head:
+    num_classes: 80
+    width: 0.5
+    strides: [8, 16, 32]
+    in_channels: [256, 512, 1024]
+    act: "silu"
+    depthwise: false
+
+  postprocess:
+    conf_thre: 0.1
+    nms_thre: 0.45
+
+optimizer:
+  momentum: 0.9
+  weight_decay: 0.0005
+
+scheduler:
+  name: "yoloxwarmcos"
+  warmup_epochs: 5
+  warmup_lr: 0.0
+  min_lr_ratio: 0.1
+  no_aug_epochs: 15
+
+training:
+  max_epoch: 100
+  max_step: 100000
