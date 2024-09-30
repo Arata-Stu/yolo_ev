@@ -13,7 +13,7 @@ class DataModule(pl.LightningDataModule):
         self.full_config = full_config
 
         self.train_dataset = None
-        self.val_dataset = None
+        self.valid_dataset = None
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
