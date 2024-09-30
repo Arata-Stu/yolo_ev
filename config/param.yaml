@@ -35,6 +35,10 @@ model:
     act: "silu"
     depthwise: false
 
+  postprocess:
+    conf_thre: 0.1
+    nms_thre: 0.45
+
 optimizer:
   momentum: 0.9
   weight_decay: 0.0005

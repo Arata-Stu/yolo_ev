@@ -5,6 +5,10 @@ from omegaconf import DictConfig
 
 from .model.yolox.yolox import YOLOX
 from yolo_ev.utils.lr_scheduler import LRScheduler
+from yolo_ev.module.model.yolox.utils.boxes import postprocess
+from yolo_ev.utils.eval.evaluation import to_coco_format, evaluation
+
+from yolo_ev.module.data.dataset.coco.coco_classes import COCO_CLASSES
 
 class ModelModule(pl.LightningModule):
 
@@ -44,15 +48,27 @@ class ModelModule(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.model.eval()
-        # imgs, targets, _, _ = batch
-        # imgs = imgs.to(torch.float32)
-        # targets = targets.to(torch.float32)
+        imgs, targets, img_info, _ = batch
+        imgs = imgs.to(torch.float32)
+        targets = targets.to(torch.float32)
         
-        # outputs = self(imgs, targets)
-        # val_loss = outputs
-        # self.log('val_loss', val_loss, prog_bar=True, logger=True)
-        # return val_loss
-        pass
+        predictions = self(imgs, targets)
+        processed_pred = postprocess(prediction=predictions,
+                                     num_classes=self.full_config.model.head.num_classes,
+                                     conf_thre=self.full_config.model.postprocess.conf_thre,
+                                     nms_thre=self.full_config.model.postprocess.nms_thre)
+        
+        height, width = img_info
+        classes = COCO_CLASSES
+        num_data = len(targets) ## = batch_size
+        gt, pred = to_coco_format(gts=targets, detections=processed_pred, categories=classes, height=height, width=width)
+        # scores ('AP', 'AP_50', 'AP_75', 'AP_S', 'AP_M', 'AP_L')
+        scores = evaluation(Gt=gt, Dt=pred, num_data=num_data)
+        
+        # APをvalidation lossの代わりにする（val_lossの代わりにスコアをモニタリング）
+        self.log('val_loss', scores['AP'], on_step=False, on_epoch=True, prog_bar=True, logger=True)
+
+        return scores
 
     def on_validation_epoch_end(self):
         # avg_val_loss = self.trainer.callback_metrics['val_loss'].mean()

@@ -23,7 +23,7 @@ def main():
             dirpath=save_dir,
             filename='epoch{epoch:02d}-val_loss{val_loss:.2f}', # チェックポイントのファイル名の形式
             monitor='val_loss',                                 # 基準とする量
-            mode="min",                                         # 最小となるところを探す
+            mode="max",                                         
         ),  
     ]
     trainer = pl.Trainer(
