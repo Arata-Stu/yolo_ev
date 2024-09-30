@@ -1,6 +1,6 @@
 import numpy as np
 import numba
-from yolo_ev.module.model.yolox.utils.boxes import xywh2cxcywh
+from yolo_ev.module.model.yolox.utils.boxes import xywh2xyxy
 
 @numba.jit(nopython=True)
 def render_events_on_empty_image(height, width, x, y, p):
@@ -21,12 +21,15 @@ class TrainTransform:
         self.flip_prob = flip_prob
         self.hsv_prob = hsv_prob
 
+        self.img_size = img_size
+
     def __call__(self, inputs):
         events = inputs['events']
         tracks = inputs['tracks']
 
+        height, width = self.img_size
         # イベントフレームの作成 (例)
-        event_frame = render_events_on_empty_image(480, 640, events['x'], events['y'], events['p'])
+        event_frame = render_events_on_empty_image(height, width, events['x'], events['y'], events['p'])
 
         # 複数のボックスに対応するために、各トラックデータから x, y, w, h を抽出
         bboxes = np.stack((tracks['x'], tracks['y'], tracks['w'], tracks['h']), axis=-1)
@@ -39,6 +42,37 @@ class TrainTransform:
 
         # padded_labels の作成
         padded_labels = np.zeros((self.max_labels, 5))  # 5 = class_id + cx, cy, w, h
+        padded_labels[:min(len(targets_t), self.max_labels)] = targets_t[:self.max_labels]
+
+        # 必要に応じてデータ型を調整
+        padded_labels = np.ascontiguousarray(padded_labels, dtype=np.float32)
+
+        return event_frame, padded_labels
+    
+class ValTransform:
+    def __init__(self, max_labels=50, flip_prob=0.5, hsv_prob=1.0, img_size=(640,640)):
+        self.max_labels = max_labels
+        self.flip_prob = flip_prob
+        self.hsv_prob = hsv_prob
+
+    def __call__(self, inputs):
+        events = inputs['events']
+        tracks = inputs['tracks']
+
+        # イベントフレームの作成 (例)
+        event_frame = render_events_on_empty_image(480, 640, events['x'], events['y'], events['p'])
+
+        # 複数のボックスに対応するために、各トラックデータから x, y, w, h を抽出
+        bboxes = np.stack((tracks['x'], tracks['y'], tracks['w'], tracks['h']), axis=-1)
+
+        # (x, y, w, h) -> (x1, y1, x2, y2) への変換
+        bboxes_xyxy = xywh2xyxy(bboxes.copy())
+
+        # ターゲットを作成 [x1, y1, x2, y2, clsss])
+        targets_t = np.hstack((bboxes_xyxy, tracks['class_id'].reshape(-1, 1)))
+
+        # padded_labels の作成
+        padded_labels = np.zeros((self.max_labels, 5))  # 
         padded_labels[:min(len(targets_t), self.max_labels)] = targets_t[:self.max_labels]
 
         # 必要に応じてデータ型を調整

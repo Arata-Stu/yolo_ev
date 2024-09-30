@@ -140,3 +140,11 @@ def xywh2cxcywh(bboxes):
     bboxes[:, 1] = bboxes[:, 1] + bboxes[:, 3] * 0.5  # y + height / 2 = center_y
     return bboxes
 
+# adding
+def xywh2xyxy(bboxes):
+    
+    bboxes[:, 2] = bboxes[:, 0] + bboxes[:, 2]  # x2 = x + w
+    bboxes[:, 3] = bboxes[:, 1] + bboxes[:, 3]  # y2 = y + h
+    return bboxes
+
+
