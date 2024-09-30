@@ -21,8 +21,8 @@ def main():
     callbacks = [
         ModelCheckpoint(
             dirpath=save_dir,
-            filename='epoch{epoch:02d}-val_loss{val_loss:.2f}', # チェックポイントのファイル名の形式
-            monitor='val_loss',                                 # 基準とする量
+            filename='epoch{epoch:02d}-AP{AP:.2f}',
+            monitor='AP',                                 # 基準とする量
             mode="max",                                         
         ),  
     ]

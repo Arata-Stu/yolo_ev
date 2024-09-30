@@ -54,26 +54,40 @@ class ModelModule(pl.LightningModule):
         
         predictions = self(imgs, targets)
         processed_pred = postprocess(prediction=predictions,
-                                     num_classes=self.full_config.model.head.num_classes,
-                                     conf_thre=self.full_config.model.postprocess.conf_thre,
-                                     nms_thre=self.full_config.model.postprocess.nms_thre)
+                                    num_classes=self.full_config.model.head.num_classes,
+                                    conf_thre=self.full_config.model.postprocess.conf_thre,
+                                    nms_thre=self.full_config.model.postprocess.nms_thre)
         
         height, width = img_info
         classes = COCO_CLASSES
-        num_data = len(targets) ## = batch_size
+        num_data = len(targets)
         gt, pred = to_coco_format(gts=targets, detections=processed_pred, categories=classes, height=height, width=width)
-        # scores ('AP', 'AP_50', 'AP_75', 'AP_S', 'AP_M', 'AP_L')
+        
+        # COCO evaluationでスコアを取得
         scores = evaluation(Gt=gt, Dt=pred, num_data=num_data)
         
-        # APをvalidation lossの代わりにする（val_lossの代わりにスコアをモニタリング）
-        self.log('val_loss', scores['AP'], on_step=False, on_epoch=True, prog_bar=True, logger=True)
-
+        # 必要なスコアをリターンして次のエポックで使う
         return scores
 
-    def on_validation_epoch_end(self):
-        # avg_val_loss = self.trainer.callback_metrics['val_loss'].mean()
-        # self.log('epoch_val_loss', avg_val_loss, on_epoch=True, prog_bar=True, logger=True)
-        pass
+    def validation_epoch_end(self, outputs):
+        # 複数バッチの結果を集計し、平均を取る
+        avg_scores = {
+            'AP': torch.tensor([x['AP'] for x in outputs]).mean(),
+            'AP_50': torch.tensor([x['AP_50'] for x in outputs]).mean(),
+            'AP_75': torch.tensor([x['AP_75'] for x in outputs]).mean(),
+            'AP_S': torch.tensor([x['AP_S'] for x in outputs]).mean(),
+            'AP_M': torch.tensor([x['AP_M'] for x in outputs]).mean(),
+            'AP_L': torch.tensor([x['AP_L'] for x in outputs]).mean(),
+        }
+
+        # 各スコアをログに記録する
+        self.log('AP', avg_scores['AP'], prog_bar=True, logger=True)
+        self.log('AP_50', avg_scores['AP_50'], prog_bar=True, logger=True)
+        self.log('AP_75', avg_scores['AP_75'], prog_bar=True, logger=True)
+        self.log('AP_S', avg_scores['AP_S'], prog_bar=True, logger=True)
+        self.log('AP_M', avg_scores['AP_M'], prog_bar=True, logger=True)
+        self.log('AP_L', avg_scores['AP_L'], prog_bar=True, logger=True)
+
         
     def configure_optimizers(self):
         # Learning rate を設定
