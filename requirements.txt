@@ -5,6 +5,8 @@ pytorch-lightning
 omegaconf
 loguru
 pyyaml
+h5py
+hdf5plugin
 opencv-python
 
 pycocotools
