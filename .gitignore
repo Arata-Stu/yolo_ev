@@ -1,6 +1,7 @@
 yolo_env
 weight/
 result/
+datasets/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
