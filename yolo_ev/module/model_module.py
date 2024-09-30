@@ -53,6 +53,7 @@ class ModelModule(pl.LightningModule):
         targets = targets.to(torch.float32)
         
         predictions = self(imgs, _)
+        # xyxy
         processed_pred = postprocess(prediction=predictions,
                                     num_classes=self.full_config.model.head.num_classes,
                                     conf_thre=self.full_config.model.postprocess.conf_thre,
