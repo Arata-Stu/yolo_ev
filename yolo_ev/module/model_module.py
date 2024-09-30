@@ -60,9 +60,9 @@ class ModelModule(pl.LightningModule):
                                     nms_thre=self.full_config.model.postprocess.nms_thre)
         
         height, width = img_info
-        classes = COCO_CLASSES
+        categories = [{"id": idx + 1, "name": name} for idx, name in enumerate(COCO_CLASSES)]
         num_data = len(targets)
-        gt, pred = to_coco_format(gts=targets, detections=processed_pred, categories=classes, height=height, width=width)
+        gt, pred = to_coco_format(gts=targets, detections=processed_pred, categories=categories, height=height, width=width)
         
         # COCO evaluationでスコアを取得
         scores = evaluation(Gt=gt, Dt=pred, num_data=num_data)
