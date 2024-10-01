@@ -38,6 +38,10 @@ model:
   postprocess:
     conf_thre: 0.01
     nms_thre: 0.65
+  
+  ema:
+    use_ema: True
+    decay: 0.9998
 
 optimizer:
   momentum: 0.9
