@@ -48,6 +48,9 @@ class ModelModule(pl.LightningModule):
         loss = outputs["total_loss"]
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
 
+        lr = self.optimizers().param_groups[0]['lr']
+        self.log('lr', lr, prog_bar=True, logger=True)
+
         if self.use_ema:
             self.ema_model.update(self.model)
 
