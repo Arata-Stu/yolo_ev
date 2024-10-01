@@ -119,7 +119,7 @@ class ModelModule(pl.LightningModule):
         
     def configure_optimizers(self):
         # Learning rate を設定
-        lr = self.full_config.scheduler.warmup_lr
+        optim_lr = self.full_config.scheduler.warmup_lr
 
         # パラメータグループを作成
         pg0, pg1, pg2 = [], [], []
@@ -135,7 +135,7 @@ class ModelModule(pl.LightningModule):
         # オプティマイザーを設定
         optimizer = torch.optim.SGD(
             pg0,
-            lr=lr,
+            lr=optim_lr,
             momentum=self.full_config.optimizer.momentum,
             nesterov=True
         )
@@ -147,8 +147,8 @@ class ModelModule(pl.LightningModule):
             'scheduler': LRScheduler(
                 optimizer=optimizer,
                 name=self.full_config.scheduler.name,
-                lr=lr,
-                iters_per_epoch=self.full_config.training.max_step,
+                lr=self.full_config.scheduler.basic_lr_per_img,
+                iters_per_epoch=self.full_config.scheduler.iters_per_epoch,
                 total_epochs=self.full_config.training.max_epoch,
                 warmup_epochs=self.full_config.scheduler.warmup_epochs,
                 warmup_lr_start=self.full_config.scheduler.warmup_lr,

@@ -16,13 +16,25 @@ class LRScheduler(_LRScheduler):
         self.iters_per_epoch = iters_per_epoch
         self.total_epochs = total_epochs
         self.total_iters = iters_per_epoch * total_epochs
+        self.last_step = 0
         self.__dict__.update(kwargs)
         self.lr_func = self._get_lr_func(name)
         super().__init__(optimizer)
 
+    def step(self):
+        # ステップごとに学習率を更新
+        self.last_step += 1
+        lr = self.lr_func(self.last_step)
+        # print(f"Step {self.last_step}: Learning rate is {lr}")
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
+        
+
     def get_lr(self):
-        iters = self.last_epoch  # self.last_epoch は現在のステップ数
-        return [self.lr_func(iters)]
+        
+        lr = self.lr_func(self.last_step)
+        return [lr for _ in self.optimizer.param_groups]
+
 
     def _get_lr_func(self, name):
         if name == "cos":
