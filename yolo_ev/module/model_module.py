@@ -83,7 +83,14 @@ class ModelModule(pl.LightningModule):
                                      nms_thre=self.full_config.model.postprocess.nms_thre)
         
         height, width = img_info
-        categories = [{"id": idx + 1, "name": name} for idx, name in enumerate(COCO_CLASSES)]
+
+        if self.full_config.dataset.name == "coco":
+            from yolo_ev.module.data.dataset.coco.coco_classes import COCO_CLASSES as CLASSES
+        elif self.full_config.dataset.name == "dsec":
+            from yolo_ev.module.data.dataset.dsec_det.dsec_det_classes import CLASSES
+            
+        classes = CLASSES
+        categories = [{"id": idx + 1, "name": name} for idx, name in enumerate(classes)]
         num_data = len(targets)
         gt, pred = to_coco_format(gts=targets, detections=processed_pred, categories=categories, height=height, width=width)
         
