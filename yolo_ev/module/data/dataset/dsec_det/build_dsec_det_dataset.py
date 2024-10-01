@@ -1,7 +1,7 @@
 import yaml
 from omegaconf import DictConfig
 from .dsec_det_dataset import DsecDetDataset
-from yolo_ev.module.data.dataset.dsec_det.transform import TrainTransform
+from yolo_ev.module.data.dataset.dsec_det.transform import TrainTransform, ValTransform
 
 
 def build_dsec_det_dataset(full_config: DictConfig, mode="train"):
@@ -16,11 +16,11 @@ def build_dsec_det_dataset(full_config: DictConfig, mode="train"):
 
     elif mode == "val":
         split = split['val']
-        transform = None
+        transform = ValTransform()
 
     elif mode=="test":
         split = split['test']
-        transform = None
+        transform = ValTransform()
 
     return DsecDetDataset(
         data_dir=full_config.dataset.data_dir,
