@@ -1,6 +1,6 @@
 import numpy as np
 import numba
-from yolo_ev.module.model.yolox.utils.boxes import xywh2xyxy
+from yolo_ev.module.model.yolox.utils.boxes import xywh2xyxy, xywh2cxcywh
 
 @numba.jit(nopython=True)
 def render_events_on_empty_image(height, width, x, y, p):
@@ -55,12 +55,15 @@ class ValTransform:
         self.flip_prob = flip_prob
         self.hsv_prob = hsv_prob
 
+        self.img_size = img_size
+
     def __call__(self, inputs):
         events = inputs['events']
         tracks = inputs['tracks']
 
+        height, width = self.img_size
         # イベントフレームの作成 (例)
-        event_frame = render_events_on_empty_image(480, 640, events['x'], events['y'], events['p'])
+        event_frame = render_events_on_empty_image(height, width, events['x'], events['y'], events['p'])
 
         # 複数のボックスに対応するために、各トラックデータから x, y, w, h を抽出
         bboxes = np.stack((tracks['x'], tracks['y'], tracks['w'], tracks['h']), axis=-1)
