@@ -42,6 +42,7 @@ class ModelModule(pl.LightningModule):
         imgs, targets, _, _ = batch
         imgs = imgs.to(torch.float32)
         targets = targets.to(torch.float32)
+        targets.requires_grad = False
         
         outputs = self(imgs, targets)
         loss = outputs["total_loss"]
@@ -65,9 +66,11 @@ class ModelModule(pl.LightningModule):
             self.model.eval()
             model_to_eval = self.model
 
+        model_to_eval.to(self.device)
         imgs, targets, img_info, _ = batch
         imgs = imgs.to(torch.float32)
         targets = targets.to(torch.float32)
+        targets.requires_grad = False
         
         predictions = model_to_eval(imgs, _)
         # xyxy
