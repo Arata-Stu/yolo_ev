@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig
 
 from yolo_ev.module.data.dataset.coco.build_coco_dataset import build_coco_dataset
+from yolo_ev.module.data.dataset.dsec_det.build_dsec_det_dataset import build_dsec_det_dataset
 
 class DataModule(pl.LightningDataModule):
 
@@ -17,10 +18,17 @@ class DataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
-            self.train_dataset = build_coco_dataset(self.full_config, mode="train")
-            print(f"Train dataset size: {len(self.train_dataset)}")
-            self.valid_dataset = build_coco_dataset(self.full_config, mode="val")
-            print(f"Validation dataset size: {len(self.valid_dataset)}")
+            if self.full_config.dataset.name == "coco":
+                self.train_dataset = build_coco_dataset(self.full_config, mode="train")
+                print(f"Train dataset size: {len(self.train_dataset)}")
+                self.valid_dataset = build_coco_dataset(self.full_config, mode="val")
+                print(f"Validation dataset size: {len(self.valid_dataset)}")
+            
+            elif self.full_config.dataset.name == "dsec":
+                self.train_dataset = build_dsec_det_dataset(self.full_config, mode="train")
+                print(f"Train dataset size: {len(self.train_dataset)}")
+                self.valid_dataset = build_dsec_det_dataset(self.full_config, mode="val")
+                print(f"Validation dataset size: {len(self.valid_dataset)}")
 
     def train_dataloader(self):
         

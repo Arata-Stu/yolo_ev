@@ -39,11 +39,13 @@ class DsecDetDataset(Dataset):
         output = {}
         output['events'] = self.get_events(item)
         output['tracks'] = self.get_tracks(item)
+        output['img_info'] = (640, 640)
+        output['img_id'] = 0
 
         if self.transform is not None:
-            output = self.transform(output) 
+            img, target, info, id = self.transform(output) 
 
-        return output
+        return img, target, info, id
     
     def first_time_from_subsequence(self, subsequence):
         return np.genfromtxt(subsequence / "images/timestamps.txt", dtype="int64")[0]

@@ -30,6 +30,8 @@ class TrainTransform:
         height, width = self.img_size
         # イベントフレームの作成 (例)
         event_frame = render_events_on_empty_image(height, width, events['x'], events['y'], events['p'])
+        event_frame = np.transpose(event_frame, (2, 0, 1))  # (channels, height, width)
+
 
         # 複数のボックスに対応するために、各トラックデータから x, y, w, h を抽出
         bboxes = np.stack((tracks['x'], tracks['y'], tracks['w'], tracks['h']), axis=-1)
@@ -47,7 +49,7 @@ class TrainTransform:
         # 必要に応じてデータ型を調整
         padded_labels = np.ascontiguousarray(padded_labels, dtype=np.float32)
 
-        return event_frame, padded_labels
+        return event_frame, padded_labels, inputs['img_info'], inputs['img_id']
     
 class ValTransform:
     def __init__(self, max_labels=50, flip_prob=0.5, hsv_prob=1.0, img_size=(640,640)):
@@ -81,4 +83,4 @@ class ValTransform:
         # 必要に応じてデータ型を調整
         padded_labels = np.ascontiguousarray(padded_labels, dtype=np.float32)
 
-        return event_frame, padded_labels
+        return event_frame, padded_labels, inputs['img_info'], inputs['img_id']
