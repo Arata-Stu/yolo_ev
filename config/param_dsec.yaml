@@ -1,7 +1,7 @@
 dataset:
   name: "dsec"
-  data_dir: "/Users/at/dataset/DSEC/"
-  split_config: "/Users/at/Desktop/self_study/EventCamera/yolo_ev/yolo_ev/module/data/dataset/dsec_det/sample.yaml"
+  data_dir: "/home/arata22/dataset/DSEC/"
+  split_config: "/home/arata22/project/YOLO/yolo_ev/yolo_ev/module/data/dataset/dsec_det/sample.yaml"
   img_size: [640, 640]
   train:
     
@@ -37,8 +37,12 @@ model:
     depthwise: false
 
   postprocess:
-    conf_thre: 0.1
-    nms_thre: 0.45
+    conf_thre: 0.01
+    nms_thre: 0.65
+  
+  ema:
+    use_ema: True
+    decay: 0.9998
 
 optimizer:
   momentum: 0.9
@@ -46,10 +50,12 @@ optimizer:
 
 scheduler:
   name: "yoloxwarmcos"
+  basic_lr_per_img: 0.00245
   warmup_epochs: 5
-  warmup_lr: 0.0
+  warmup_lr: 0.0001
   min_lr_ratio: 0.1
   no_aug_epochs: 15
+  iters_per_epoch: 5000
 
 training:
   max_epoch: 100
