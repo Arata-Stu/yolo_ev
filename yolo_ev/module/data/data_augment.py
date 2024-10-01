@@ -228,16 +228,26 @@ class ValTransform:
         data
     """
 
-    def __init__(self, swap=(2, 0, 1), legacy=False):
+    def __init__(self, swap=(2, 0, 1), max_labels=50, legacy=False):
         self.swap = swap
+        self.max_labels = max_labels
         self.legacy = legacy
 
     # assume input is cv2 img for now
-    def __call__(self, img, res, input_size):
+    def __call__(self, img, targets, input_size):
         img, _ = preproc(img, input_size, self.swap)
         if self.legacy:
             img = img[::-1, :, :].copy()
             img /= 255.0
             img -= np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
             img /= np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
-        return img, res
+
+        # Initialize targets with zeros for padding
+        padded_targets = np.zeros((self.max_labels, 5), dtype=np.float32)
+
+        if targets is not None and len(targets) > 0:
+            # No need to convert, assume targets are already in the correct format [x1, y1, x2, y2, class_id]
+            # Apply padding to ensure fixed size output
+            padded_targets[:len(targets)][:self.max_labels] = targets[:self.max_labels]
+
+        return img, padded_targets
