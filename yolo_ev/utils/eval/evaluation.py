@@ -50,6 +50,10 @@ def to_coco_format(gts, detections, categories, height=640, width=640):
              "height": height,
              "width": width})
 
+        # Skip if gt or pred is None
+        if gt is None or pred is None:
+            continue
+
         for bbox in gt:
             x1, y1, x2, y2 = bbox[:4].tolist()  # Extract bounding box coordinates
             w = x2 - x1
@@ -67,7 +71,6 @@ def to_coco_format(gts, detections, categories, height=640, width=640):
                 "id": len(annotations) + 1  # Unique ID for each annotation
             }
             annotations.append(annotation)
-
 
         for bbox in pred:
             # Extract coordinates, confidence, and class id
