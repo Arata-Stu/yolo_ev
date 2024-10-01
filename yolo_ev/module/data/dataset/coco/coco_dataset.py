@@ -27,8 +27,7 @@ def remove_useless_info(coco):
 
 class COCODataset(Dataset):
 
-    def __init__(self, data_dir, json_file, name="train2017", img_size=(256, 256), transform=None):
-        
+    def __init__(self, data_dir, json_file, name="train2017", img_size=(256, 256), transform=None, cache=False):
         self.data_dir = data_dir
         self.json_file = json_file
         self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
@@ -42,8 +41,18 @@ class COCODataset(Dataset):
         self.name = name
         self.img_size = img_size
         self.transform = transform
+        self.cache = cache
         self.annotations = self._load_coco_annotations()
         self.path_filename = [os.path.join(name, anno[3]) for anno in self.annotations]
+
+        # Initialize cache
+        self.img_cache = {} if cache else None
+        self.anno_cache = {} if cache else None
+
+        # Preload data if cache is enabled
+        if self.cache:
+            self._cache_images()
+            self._cache_annotations()
 
     def __len__(self):
         return self.num_imgs
@@ -89,11 +98,27 @@ class COCODataset(Dataset):
 
         return (res, img_info, resized_info, file_name)
 
+    def _cache_images(self):
+        for index in range(self.num_imgs):
+            img = self.load_image(index)
+            self.img_cache[index] = img
+
+    def _cache_annotations(self):
+        for index in range(self.num_imgs):
+            label = self.load_anno(index)
+            self.anno_cache[index] = label
+
     def load_anno(self, index):
+        if self.cache and index in self.anno_cache:
+            return self.anno_cache[index]
         return self.annotations[index][0]
 
     def load_resized_img(self, index):
-        img = self.load_image(index)
+        if self.cache and index in self.img_cache:
+            img = self.img_cache[index]
+        else:
+            img = self.load_image(index)
+
         r = min(self.img_size[0] / img.shape[0], self.img_size[1] / img.shape[1])
         resized_img = cv2.resize(
             img,
@@ -103,16 +128,15 @@ class COCODataset(Dataset):
         return resized_img
 
     def load_image(self, index):
+        if self.cache and index in self.img_cache:
+            return self.img_cache[index]
+
         file_name = self.annotations[index][3]
-
         img_file = os.path.join(self.data_dir, "images" ,self.name, file_name)
-
         img = cv2.imread(img_file)
         assert img is not None, f"file named {img_file} not found"
-
         return img
 
-    
     def read_img(self, index):
         return self.load_resized_img(index)
 
@@ -120,16 +144,11 @@ class COCODataset(Dataset):
         id_ = self.ids[index]
         label, origin_image_size, _, _ = self.annotations[index]
         img = self.read_img(index)
-
         return img, copy.deepcopy(label), origin_image_size, np.array([id_])
 
-    
     def __getitem__(self, index):
-        
         img, target, img_info, img_id = self.pull_item(index)
 
         if self.transform is not None:
             img, target = self.transform(img, target, self.img_size)
         return img, target, img_info, img_id
-
-    
