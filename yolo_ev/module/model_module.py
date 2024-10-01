@@ -4,6 +4,7 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig
 
 from .model.yolox.yolox import YOLOX
+from yolo_ev.module.model.yolox.utils.ema import ModelEMA
 from yolo_ev.utils.lr_scheduler import LRScheduler
 from yolo_ev.module.model.yolox.utils.boxes import postprocess
 from yolo_ev.utils.eval.evaluation import to_coco_format, evaluation
@@ -29,6 +30,10 @@ class ModelModule(pl.LightningModule):
         self.model.head.initialize_biases(1e-2)
         self.model.train()
 
+        self.use_ema = self.full_config.model.ema.use_ema
+        if self.use_ema:
+            self.ema_model = ModelEMA(self.model, self.full_config.model.ema.decay)
+
     def forward(self, x, targets=None):
         return self.model(x, targets)
     
@@ -41,6 +46,10 @@ class ModelModule(pl.LightningModule):
         outputs = self(imgs, targets)
         loss = outputs["total_loss"]
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+
+        if self.use_ema:
+            self.ema_model.update(self.model)
+
         return loss
     
     def on_train_epoch_end(self):
@@ -48,12 +57,19 @@ class ModelModule(pl.LightningModule):
         self.log('epoch_train_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)
 
     def validation_step(self, batch, batch_idx):
-        self.model.eval()
+        # 検証時にEMAモデルを使用
+        if self.use_ema:
+            self.ema_model.ema.eval()
+            model_to_eval = self.ema_model.ema
+        else:
+            self.model.eval()
+            model_to_eval = self.model
+
         imgs, targets, img_info, _ = batch
         imgs = imgs.to(torch.float32)
         targets = targets.to(torch.float32)
         
-        predictions = self(imgs, _)
+        predictions = model_to_eval(imgs, _)
         # xyxy
         processed_pred = postprocess(prediction=predictions,
                                      num_classes=self.full_config.model.head.num_classes,
