@@ -5,13 +5,10 @@ import cv2
 import torch
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
+import psutil
 
-# copy from yolox/data/datasets/coco.py
 def remove_useless_info(coco):
-    """
-    Remove useless info in coco dataset. COCO object is modified inplace.
-    This function is mainly used for saving memory (save about 30% mem).
-    """
+    # 省メモリのためにCOCOデータセットの不要情報を削除
     if isinstance(coco, COCO):
         dataset = coco.dataset
         dataset.pop("info", None)
@@ -27,7 +24,8 @@ def remove_useless_info(coco):
 
 class COCODataset(Dataset):
 
-    def __init__(self, data_dir, json_file, name="train2017", img_size=(256, 256), transform=None, cache=False):
+    def __init__(self, data_dir, json_file, name="train2017", img_size=(256, 256), transform=None, cache=False, cache_type="ram"):
+        
         self.data_dir = data_dir
         self.json_file = json_file
         self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
@@ -41,18 +39,21 @@ class COCODataset(Dataset):
         self.name = name
         self.img_size = img_size
         self.transform = transform
-        self.cache = cache
         self.annotations = self._load_coco_annotations()
         self.path_filename = [os.path.join(name, anno[3]) for anno in self.annotations]
+        
+        # キャッシュ設定
+        self.cache = cache
+        self.cache_type = cache_type
+        self.imgs = [None] * self.num_imgs if self.cache and self.cache_type == "ram" else None
 
-        # Initialize cache
-        self.img_cache = {} if cache else None
-        self.anno_cache = {} if cache else None
+        if self.cache and self.cache_type == "disk":
+            self.cache_dir = os.path.join(self.data_dir, f"cache_{self.name}")
+            if not os.path.exists(self.cache_dir):
+                os.makedirs(self.cache_dir)
 
-        # Preload data if cache is enabled
         if self.cache:
-            self._cache_images()
-            self._cache_annotations()
+            self.cache_images()
 
     def __len__(self):
         return self.num_imgs
@@ -98,27 +99,11 @@ class COCODataset(Dataset):
 
         return (res, img_info, resized_info, file_name)
 
-    def _cache_images(self):
-        for index in range(self.num_imgs):
-            img = self.load_image(index)
-            self.img_cache[index] = img
-
-    def _cache_annotations(self):
-        for index in range(self.num_imgs):
-            label = self.load_anno(index)
-            self.anno_cache[index] = label
-
     def load_anno(self, index):
-        if self.cache and index in self.anno_cache:
-            return self.anno_cache[index]
         return self.annotations[index][0]
 
     def load_resized_img(self, index):
-        if self.cache and index in self.img_cache:
-            img = self.img_cache[index]
-        else:
-            img = self.load_image(index)
-
+        img = self.load_image(index)
         r = min(self.img_size[0] / img.shape[0], self.img_size[1] / img.shape[1])
         resized_img = cv2.resize(
             img,
@@ -128,17 +113,37 @@ class COCODataset(Dataset):
         return resized_img
 
     def load_image(self, index):
-        if self.cache and index in self.img_cache:
-            return self.img_cache[index]
-
         file_name = self.annotations[index][3]
-        img_file = os.path.join(self.data_dir, "images" ,self.name, file_name)
+        img_file = os.path.join(self.data_dir, "images", self.name, file_name)
         img = cv2.imread(img_file)
         assert img is not None, f"file named {img_file} not found"
         return img
 
     def read_img(self, index):
-        return self.load_resized_img(index)
+        # キャッシュが有効であれば、キャッシュから画像を読み込む
+        if self.cache:
+            if self.cache_type == "ram" and self.imgs[index] is not None:
+                return copy.deepcopy(self.imgs[index])
+            elif self.cache_type == "disk":
+                cache_file = os.path.join(self.cache_dir, f"{index}.npy")
+                if os.path.exists(cache_file):
+                    return np.load(cache_file)
+        
+        # キャッシュがない場合は画像をリサイズして読み込む
+        img = self.load_resized_img(index)
+
+        # キャッシュに保存
+        if self.cache_type == "ram":
+            self.imgs[index] = copy.deepcopy(img)
+        elif self.cache_type == "disk":
+            np.save(os.path.join(self.cache_dir, f"{index}.npy"), img)
+
+        return img
+
+    def cache_images(self):
+        # すべての画像をキャッシュに保存
+        for index in range(self.num_imgs):
+            self.read_img(index)
 
     def pull_item(self, index):
         id_ = self.ids[index]
@@ -148,7 +153,6 @@ class COCODataset(Dataset):
 
     def __getitem__(self, index):
         img, target, img_info, img_id = self.pull_item(index)
-
         if self.transform is not None:
             img, target = self.transform(img, target, self.img_size)
         return img, target, img_info, img_id
