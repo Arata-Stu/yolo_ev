@@ -16,6 +16,7 @@ class ModelModule(pl.LightningModule):
         super().__init__()
 
         self.full_config = full_config
+        self.validation_scores = []  # バリデーションスコアを保存するリスト
         self.model = YOLOX(self.full_config.model)
 
         def init_yolo(M):
@@ -55,9 +56,9 @@ class ModelModule(pl.LightningModule):
         predictions = self(imgs, _)
         # xyxy
         processed_pred = postprocess(prediction=predictions,
-                                    num_classes=self.full_config.model.head.num_classes,
-                                    conf_thre=self.full_config.model.postprocess.conf_thre,
-                                    nms_thre=self.full_config.model.postprocess.nms_thre)
+                                     num_classes=self.full_config.model.head.num_classes,
+                                     conf_thre=self.full_config.model.postprocess.conf_thre,
+                                     nms_thre=self.full_config.model.postprocess.nms_thre)
         
         height, width = img_info
         categories = [{"id": idx + 1, "name": name} for idx, name in enumerate(COCO_CLASSES)]
@@ -67,18 +68,20 @@ class ModelModule(pl.LightningModule):
         # COCO evaluationでスコアを取得
         scores = evaluation(Gt=gt, Dt=pred, num_data=num_data)
         
-        # 必要なスコアをリターンして次のエポックで使う
+        # スコアをリストに追加
+        self.validation_scores.append(scores)
+        
         return scores
 
-    def on_validation_epoch_end(self, outputs):
-        # 複数バッチの結果を集計し、平均を取る
+    def on_validation_epoch_end(self):
+        # スコアの集計処理
         avg_scores = {
-            'AP': torch.tensor([x['AP'] for x in outputs]).mean(),
-            'AP_50': torch.tensor([x['AP_50'] for x in outputs]).mean(),
-            'AP_75': torch.tensor([x['AP_75'] for x in outputs]).mean(),
-            'AP_S': torch.tensor([x['AP_S'] for x in outputs]).mean(),
-            'AP_M': torch.tensor([x['AP_M'] for x in outputs]).mean(),
-            'AP_L': torch.tensor([x['AP_L'] for x in outputs]).mean(),
+            'AP': torch.tensor([x['AP'] for x in self.validation_scores]).mean(),
+            'AP_50': torch.tensor([x['AP_50'] for x in self.validation_scores]).mean(),
+            'AP_75': torch.tensor([x['AP_75'] for x in self.validation_scores]).mean(),
+            'AP_S': torch.tensor([x['AP_S'] for x in self.validation_scores]).mean(),
+            'AP_M': torch.tensor([x['AP_M'] for x in self.validation_scores]).mean(),
+            'AP_L': torch.tensor([x['AP_L'] for x in self.validation_scores]).mean(),
         }
 
         # 各スコアをログに記録する
@@ -89,6 +92,8 @@ class ModelModule(pl.LightningModule):
         self.log('AP_M', avg_scores['AP_M'], prog_bar=True, logger=True)
         self.log('AP_L', avg_scores['AP_L'], prog_bar=True, logger=True)
 
+        # バリデーションスコアのリセット
+        self.validation_scores.clear()
         
     def configure_optimizers(self):
         # Learning rate を設定
