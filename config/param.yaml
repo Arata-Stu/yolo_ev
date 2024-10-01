@@ -36,8 +36,8 @@ model:
     depthwise: false
 
   postprocess:
-    conf_thre: 0.1
-    nms_thre: 0.45
+    conf_thre: 0.01
+    nms_thre: 0.65
 
 optimizer:
   momentum: 0.9
