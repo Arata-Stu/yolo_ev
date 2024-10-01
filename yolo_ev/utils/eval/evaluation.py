@@ -5,6 +5,13 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 def evaluation(Gt, Dt, num_data):
+
+    out_keys = ('AP', 'AP_50', 'AP_75', 'AP_S', 'AP_M', 'AP_L')
+    out_dict = {k: 0.0 for k in out_keys}
+
+    if len(Dt) == 0:
+        return out_dict
+    
     coco_gt = COCO()
     coco_gt.dataset = Gt
 
@@ -17,9 +24,6 @@ def evaluation(Gt, Dt, num_data):
     coco_eval.accumulate()
 
     coco_eval.summarize()
-
-    out_keys = ('AP', 'AP_50', 'AP_75', 'AP_S', 'AP_M', 'AP_L')
-    out_dict = {k: 0.0 for k in out_keys}
 
     with open(os.devnull, 'w') as f, contextlib.redirect_stdout(f):
         # info: https://stackoverflow.com/questions/8391411/how-to-block-calls-to-print
