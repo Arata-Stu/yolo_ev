@@ -23,8 +23,6 @@ def evaluation(Gt, Dt, num_data):
     coco_eval.evaluate()
     coco_eval.accumulate()
 
-    coco_eval.summarize()
-
     with open(os.devnull, 'w') as f, contextlib.redirect_stdout(f):
         # info: https://stackoverflow.com/questions/8391411/how-to-block-calls-to-print
         coco_eval.summarize()
