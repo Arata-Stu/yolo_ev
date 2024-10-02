@@ -66,6 +66,8 @@ class ValTransform:
         height, width = self.img_size
         # イベントフレームの作成 (例)
         event_frame = render_events_on_empty_image(height, width, events['x'], events['y'], events['p'])
+        event_frame = np.transpose(event_frame, (2, 0, 1))  # (channels, height, width)
+
 
         # 複数のボックスに対応するために、各トラックデータから x, y, w, h を抽出
         bboxes = np.stack((tracks['x'], tracks['y'], tracks['w'], tracks['h']), axis=-1)
