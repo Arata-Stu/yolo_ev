@@ -15,6 +15,7 @@ class DataModule(pl.LightningDataModule):
 
         self.train_dataset = None
         self.valid_dataset = None
+        self.test_dataset = None
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
@@ -23,6 +24,8 @@ class DataModule(pl.LightningDataModule):
                 print(f"Train dataset size: {len(self.train_dataset)}")
                 self.valid_dataset = build_coco_dataset(self.full_config, mode="val")
                 print(f"Validation dataset size: {len(self.valid_dataset)}")
+                self.test_dataset = build_coco_dataset(self.full_config, mode="test")
+                print(f"Test dataset size: {len(self.test_dataset)}")
             
             elif self.full_config.dataset.name == "dsec":
                 self.train_dataset = build_dsec_det_dataset(self.full_config, mode="train")
