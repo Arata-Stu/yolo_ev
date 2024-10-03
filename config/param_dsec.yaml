@@ -1,7 +1,7 @@
 dataset:
   name: "dsec"
-  data_dir: "/home/arata22/dataset/DSEC/"
-  split_config: "/home/arata22/project/YOLO/yolo_ev/yolo_ev/module/data/dataset/dsec_det/sample.yaml"
+  data_dir: "./datasets/DSEC/"
+  split_config: "/home/arata/project/YOLO/yolo_ev/yolo_ev/module/data/dataset/dsec_det/train_val_test_split.yaml"
   img_size: [640, 640]
   train:
     
