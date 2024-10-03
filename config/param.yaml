@@ -1,6 +1,6 @@
 dataset:
   name: "coco"
-  data_dir: "/home/arata22/dataset/coco/"
+  data_dir: "./../datasets/coco/"
   img_size: [640, 640]
   train:
     json_file: "instances_train2017.json"
@@ -13,7 +13,7 @@ dataset:
     num_workers: 4
 
   test:
-    # json_file: "instances_test2017.json"
+    json_file: ~
     batch_size: 16
     num_workers: 4
 
@@ -59,3 +59,6 @@ scheduler:
 training:
   max_epoch: 100
   max_step: 100000
+
+test:
+  save_dir: ./result/outputs/
