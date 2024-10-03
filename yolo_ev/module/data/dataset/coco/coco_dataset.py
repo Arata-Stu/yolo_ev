@@ -6,6 +6,8 @@ import torch
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
 
+from omegaconf import ListConfig
+
 # copy from yolox/data/datasets/coco.py
 def remove_useless_info(coco):
     """
@@ -27,26 +29,30 @@ def remove_useless_info(coco):
 
 class COCODataset(Dataset):
 
-    def __init__(self, data_dir, json_file, name="train2017", img_size=(256, 256), transform=None):
-        
+    def __init__(self, data_dir, json_file=None, name="train2017", img_size=(256, 256), transform=None):
         self.data_dir = data_dir
         self.json_file = json_file
-        self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
-        remove_useless_info(self.coco)
-
-        self.ids = self.coco.getImgIds()
-        self.num_imgs = len(self.ids)
-        self.class_ids = sorted(self.coco.getCatIds())
-        self.cats = self.coco.loadCats(self.coco.getCatIds())
-        self._classes = tuple([c["name"] for c in self.cats])
         self.name = name
         self.img_size = img_size
         self.transform = transform
-        self.annotations = self._load_coco_annotations()
-        self.path_filename = [os.path.join(name, anno[3]) for anno in self.annotations]
+        
+        if self.json_file is not None:
+            self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
+            remove_useless_info(self.coco)
+            self.ids = self.coco.getImgIds()
+            self.class_ids = sorted(self.coco.getCatIds())
+            self.cats = self.coco.loadCats(self.coco.getCatIds())
+            self._classes = tuple([c["name"] for c in self.cats])
+            self.annotations = self._load_coco_annotations()
+            self.path_filename = [os.path.join(name, anno[3]) for anno in self.annotations]
+        else:
+            # jsonファイルがない場合でも画像をロードするために、画像IDを取得
+            image_dir = os.path.join(self.data_dir, "images", self.name)
+            self.ids = [f.split('.')[0] for f in os.listdir(image_dir) if f.endswith('.jpg')]
+            self.annotations = None
 
     def __len__(self):
-        return self.num_imgs
+        return len(self.ids)
 
     def _load_coco_annotations(self):
         return [self.load_anno_from_ids(_ids) for _ids in self.ids]
@@ -90,7 +96,10 @@ class COCODataset(Dataset):
         return (res, img_info, resized_info, file_name)
 
     def load_anno(self, index):
-        return self.annotations[index][0]
+        if self.annotations is not None:
+            return self.annotations[index][0]
+        else:
+            return None
 
     def load_resized_img(self, index):
         img = self.load_image(index)
@@ -103,33 +112,48 @@ class COCODataset(Dataset):
         return resized_img
 
     def load_image(self, index):
-        file_name = self.annotations[index][3]
-
-        img_file = os.path.join(self.data_dir, "images" ,self.name, file_name)
-
+        file_name = (
+            self.annotations[index][3] if self.annotations is not None
+            else f"{self.ids[index]}.jpg"
+        )
+        img_file = os.path.join(self.data_dir, "images", self.name, file_name)
         img = cv2.imread(img_file)
         assert img is not None, f"file named {img_file} not found"
-
         return img
-
-    
     def read_img(self, index):
         return self.load_resized_img(index)
 
     def pull_item(self, index):
         id_ = self.ids[index]
-        label, origin_image_size, _, _ = self.annotations[index]
-        img = self.read_img(index)
+        if self.annotations is not None:
+            label, origin_image_size, _, _ = self.annotations[index]
+            img = self.read_img(index)
+            return img, copy.deepcopy(label), origin_image_size, np.array([id_])
+        else:
+            img = self.read_img(index)
+            label = np.zeros((0, 5))
+            
+            # img_size が ListConfig の場合はリストに変換し、タプルに変換
+            if isinstance(self.img_size, ListConfig):
+                img_info = tuple(self.img_size)
+            else:
+                img_info = self.img_size  # すでにタプルまたは他の形式の場合、そのまま使用
 
-        return img, copy.deepcopy(label), origin_image_size, np.array([id_])
 
-    
-    def __getitem__(self, index):
+            if isinstance(id_, str):
+                img_id = int(id_)
+            else:
+                img_id = id_
+            return img, label, img_info, np.array([img_id])
+
         
+        
+    def __getitem__(self, index):
         img, target, img_info, img_id = self.pull_item(index)
 
         if self.transform is not None:
             img, target = self.transform(img, target, self.img_size)
+        
         return img, target, img_info, img_id
 
     

@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from omegaconf import DictConfig
+import json
+import os
 
 from .model.yolox.yolox import YOLOX
 from yolo_ev.module.model.yolox.utils.ema import ModelEMA
@@ -123,6 +125,41 @@ class ModelModule(pl.LightningModule):
 
         # バリデーションスコアのリセット
         self.validation_scores.clear()
+
+    def test_step(self, batch, batch_idx):
+        self.model.eval()
+        self.model.to(self.device)
+
+        imgs, _, img_info, _ = batch
+        imgs = imgs.to(torch.float32)
+        
+        with torch.no_grad():  # テスト時に勾配を計算しない
+            predictions = self.model(imgs, _)
+            
+        # 検出結果を後処理 (xyxyのバウンディングボックスを取得)
+        processed_pred = postprocess(prediction=predictions,
+                                     num_classes=self.full_config.model.head.num_classes,
+                                     conf_thre=self.full_config.model.postprocess.conf_thre,
+                                     nms_thre=self.full_config.model.postprocess.nms_thre)
+
+        save_dir = self.full_config.test.save_dir
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+            print(f"Directory {save_dir} created.")
+
+        # バッチ内の画像ごとに結果を保存
+        for idx, pred in enumerate(processed_pred):
+            img_id = img_info[idx]['id']
+            save_path = os.path.join(save_dir, f"{img_id}_prediction.json")
+
+            # 結果をJSONとして保存
+            with open(save_path, "w") as f:
+                json.dump(pred.tolist(), f)
+
+        return processed_pred
+
+    def on_test_epoch_end(self):
+        print(f"Test finished, results are saved to {self.full_config.test.save_dir}")
         
     def configure_optimizers(self):
         # Learning rate を設定
