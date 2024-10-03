@@ -187,11 +187,12 @@ class ModelModule(pl.LightningModule):
         optimizer.add_param_group({"params": pg2})
 
         # スケジューラーの設定
+        lr = self.full_config.scheduler.basic_lr_per_img * self.full_config.dataset.train.batch_size
         scheduler = {
             'scheduler': LRScheduler(
                 optimizer=optimizer,
                 name=self.full_config.scheduler.name,
-                lr=self.full_config.scheduler.basic_lr_per_img,
+                lr=lr,
                 iters_per_epoch=self.full_config.scheduler.iters_per_epoch,
                 total_epochs=self.full_config.training.max_epoch,
                 warmup_epochs=self.full_config.scheduler.warmup_epochs,
