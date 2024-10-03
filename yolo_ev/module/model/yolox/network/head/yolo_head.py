@@ -524,7 +524,7 @@ class YOLOXHead(nn.Module):
         y_centers_per_image = ((y_shifts[0] + 0.5) * expanded_strides_per_image).unsqueeze(0)
 
         # in fixed center
-        center_radius = 1.5
+        center_radius = 2.0 # 1.5
         center_dist = expanded_strides_per_image.unsqueeze(0) * center_radius
         gt_bboxes_per_image_l = (gt_bboxes_per_image[:, 0:1]) - center_dist
         gt_bboxes_per_image_r = (gt_bboxes_per_image[:, 0:1]) + center_dist
