@@ -130,7 +130,7 @@ class ModelModule(pl.LightningModule):
         self.model.eval()
         self.model.to(self.device)
 
-        imgs, _, img_info, _ = batch
+        imgs, _, img_info, ids = batch
         imgs = imgs.to(torch.float32)
         
         with torch.no_grad():  # テスト時に勾配を計算しない
@@ -149,7 +149,7 @@ class ModelModule(pl.LightningModule):
 
         # バッチ内の画像ごとに結果を保存
         for idx, pred in enumerate(processed_pred):
-            img_id = img_info[idx]['id']
+            img_id = ids[idx][0]
             save_path = os.path.join(save_dir, f"{img_id}_prediction.json")
 
             # 結果をJSONとして保存
