@@ -29,7 +29,7 @@ model:
     act: "silu"
     
   head:
-    num_classes: 80
+    num_classes: 8
     width: 0.5
     strides: [8, 16, 32]
     in_channels: [256, 512, 1024]
@@ -59,4 +59,4 @@ scheduler:
 
 training:
   max_epoch: 100
-  max_step: 100000
+  max_step: 1000000
