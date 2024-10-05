@@ -32,6 +32,8 @@ class DataModule(pl.LightningDataModule):
                 print(f"Train dataset size: {len(self.train_dataset)}")
                 self.valid_dataset = build_dsec_det_dataset(self.full_config, mode="val")
                 print(f"Validation dataset size: {len(self.valid_dataset)}")
+                self.test_dataset = build_dsec_det_dataset(self.full_config, mode="test")
+                print(f"Validation dataset size: {len(self.test_dataset)}")
 
     def train_dataloader(self):
         
