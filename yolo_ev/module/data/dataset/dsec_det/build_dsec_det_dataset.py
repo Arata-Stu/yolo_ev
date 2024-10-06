@@ -26,4 +26,6 @@ def build_dsec_det_dataset(full_config: DictConfig, mode="train"):
         data_dir=full_config.dataset.data_dir,
         split_config=split,
         img_size=full_config.dataset.img_size,
-        transform=transform)
+        transform=transform,
+        use_imgs=full_config.dataset.use_imgs,
+        use_events=full_config.dataset.use_events)
