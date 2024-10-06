@@ -3,6 +3,8 @@ dataset:
   data_dir: "./datasets/DSEC/"
   split_config: "/home/arata/project/YOLO/yolo_ev/yolo_ev/module/data/dataset/dsec_det/train_val_test_split.yaml"
   img_size: [640, 640]
+  use_imgs: True
+  use_events: True
   train:
     
     batch_size: 16
