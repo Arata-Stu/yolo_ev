@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 import torch
 from torch.utils.data import Dataset
 from pathlib import Path
@@ -8,16 +9,18 @@ from .io import extract_from_h5_by_timewindow
 
 class DsecDetDataset(Dataset):
 
-    def __init__(self, data_dir, split_config, img_size=(256, 256), transform=None, sync="back"):
+    def __init__(self, data_dir, split_config, img_size=(256, 256), transform=None, sync="back", use_events=True, use_imgs=True):
         self.data_dir = Path(data_dir)
         self.split_config = split_config
-        self.img_size=img_size
+        self.img_size = img_size
         self.transform = transform
         self.sync = sync
+        self.use_events = use_events
+        self.use_imgs = use_imgs
 
         available_dirs = list(self.data_dir.glob("*/"))
         self.subsequence_directories = [self.data_dir / s for s in split_config if self.data_dir / s in available_dirs]
-        
+
         self.subsequence_directories = sorted(self.subsequence_directories, key=self.first_time_from_subsequence)
 
         self.directories = dict()
@@ -30,25 +33,37 @@ class DsecDetDataset(Dataset):
                 directory.images.timestamps
             )
 
-
     def __len__(self):
         return sum(len(v) - 1 for v in self.img_idx_track_idxs.values())
 
-
     def __getitem__(self, item):
         output = {}
-        output['events'] = self.get_events(item)
+        
+        if self.use_imgs:
+            output['image'] = self.get_image(item)
+        
+        if self.use_events:
+            output['events'] = self.get_events(item)
+        
         output['tracks'] = self.get_tracks(item)
         output['img_info'] = (640, 640)
         output['img_id'] = 0
 
         if self.transform is not None:
             img, target, info, id = self.transform(output) 
+        else:
+            img, target, info, id = output['image'], output['tracks'], output['img_info'], output['img_id']
 
         return img, target, info, id
     
     def first_time_from_subsequence(self, subsequence):
         return np.genfromtxt(subsequence / "images/timestamps.txt", dtype="int64")[0]
+    
+    def get_image(self, index, directory_name=None):
+        index, img_idx_to_track_idx, directory = self.rel_index(index, directory_name)
+        image_files = directory.images.image_files_distorted
+        image = cv2.imread(str(image_files[index]))
+        return image
     
     def get_tracks(self, index, mask=None, directory_name=None):
         index, img_idx_to_track_idx, directory = self.rel_index(index, directory_name)
@@ -80,7 +95,6 @@ class DsecDetDataset(Dataset):
 
         return i_0, i_1
 
-    
     def rel_index(self, index, directory_name=None):
         if directory_name is not None:
             img_idx_to_track_idx = self.img_idx_track_idxs[directory_name]
